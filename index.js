@@ -50,62 +50,78 @@ const userSchema = ({
 const User = mongoose.model('accounts', userSchema)
 
 app.get('/', (req, res)=>{
-    res.send('serverzin do vitosnatios riven')
+    return res.send('serverzin do vitosnatios riven');
 })
 
 app.get('/itensDaLoja', async (req, res)=>{
-    Item.find({}, (err, result)=>{
-        res.send(result)
-    })
+    const result = await Item.find({});
+    return res.send(result);
 })
 
 //comprar pelo carrinho
-app.post('/efetuarCompra', (req, res)=>{
+app.post('/efetuarCompra', async (req, res)=>{
     const oldJwt = req.body.formulario.jwt;
     const form = req.body.formulario;
+    const returnError = ()=>{
+        return res.json({
+            status: 'err'
+        });
+    }
 
-    jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
-        if (err) {
-            res.json({
-                status: 'houve algum erro de credenciais'
-            })
-        } else if (decoded.data._id === form.userId) {
-            User.findById(form.userId, (err, result)=>{
+    const testres = form.itensByIdAndItsQuantity.map(async item=>{
+        let mapResult = false;
+        const quantidadeDesseItem = item.quantidade;
+        const resultItem = await Item.findById(item._id);
+        if(resultItem.estoque < quantidadeDesseItem) {
+            mapResult = true;
+        }
+        return mapResult;
+    });
+
+    const results = await Promise.all(testres);
+
+    //se nao tiver algo no estoque
+    if(results.includes(true)){
+        return res.json({
+            status: 'estoqueFail'
+        })
+    //se tiver tudo em ordem no estoque
+    } else {
+        try {
+            const decoded = jwt.verify(oldJwt, jwtSecret);
+            if (decoded.data._id===form.userId) {
+                const result = await User.findById(form.userId);
                 const whatToChange = [...result.itensComprados, { detalhes: {valor: form.valorDaCompra, dataDaCompra: form.horarioDeCompra}, itens: form.itensByIdAndItsQuantity } ];
-                User.findByIdAndUpdate(form.userId, { itensComprados: whatToChange }, (err, result)=>{
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        User.findById(form.userId, (err, updatedUser)=>{
-                            const newJwt = jwt.sign({
-                                exp: Math.floor(Date.now() / 1000) + (30 * 60),
-                                data: {
-                                        _id: updatedUser._id,
-                                        login: updatedUser.login,
-                                        nome: updatedUser.nome,
-                                        endereco: updatedUser.endereco,
-                                        sexo: updatedUser.sexo,
-                                        itensComprados: updatedUser.itensComprados
-                                    }
-                            }, jwtSecret);
-                            res.json({
-                                status: 'success',
-                                jwt: newJwt
-                            })
-                        })
-                    }
-                });
-            })
-            //descontar do estoque quando comprado
-            form.itensByIdAndItsQuantity.forEach((item)=>{
-                const quantidadeDesseItem = item.quantidade;
-                Item.findById(item._id, (err, result)=>{
-                    Item.findByIdAndUpdate(item._id, { estoque: result.estoque-quantidadeDesseItem}, (err, result)=>{})
-                    Item.findByIdAndUpdate(item._id, { numDeCompras: result.numDeCompras+quantidadeDesseItem}, (err, result)=>{})
+                await User.findByIdAndUpdate(form.userId, { itensComprados: whatToChange });
+                //
+                const updatedUser = await User.findById(form.userId);
+                //checa se tem os itens no estoque pra continuar
+                form.itensByIdAndItsQuantity.forEach(async item=>{
+                    const quantidadeDesseItem = item.quantidade;
+                    const resultItem = await Item.findById(item._id);
+                    Item.findByIdAndUpdate(item._id, { estoque: resultItem.estoque-quantidadeDesseItem}, (err, result)=>{})
+                    Item.findByIdAndUpdate(item._id, { numDeCompras: resultItem.numDeCompras+quantidadeDesseItem}, (err, result)=>{})
                 })
-            })
-        } 
-    })
+                const newJwt = jwt.sign({
+                    exp: Math.floor(Date.now() / 1000) + (30 * 60),
+                    data: {
+                            _id: updatedUser._id,
+                            login: updatedUser.login,
+                            nome: updatedUser.nome,
+                            endereco: updatedUser.endereco,
+                            sexo: updatedUser.sexo,
+                            itensComprados: updatedUser.itensComprados
+                        }
+                }, jwtSecret);
+                return res.json({
+                    status: 'success',
+                    jwt: newJwt
+                })
+            }
+        } catch(err) {
+            returnError();
+        }
+    }
 })
 
 //comprar pela página do item
@@ -117,7 +133,7 @@ app.post('/efetuarCompraPeloItem', (req, res)=>{
 
     jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
         if (err) {
-            res.json({
+            return res.json({
                 status: 'houve algum erro de credenciais'
             })
         } else if (decoded.data._id === form.userId) {
@@ -144,7 +160,7 @@ app.post('/efetuarCompraPeloItem', (req, res)=>{
                                                 itensComprados: updatedUser.itensComprados
                                             }
                                     }, jwtSecret);
-                                    res.json({
+                                    return res.json({
                                         status: 'success',
                                         jwt: newJwt
                                     })
@@ -152,7 +168,7 @@ app.post('/efetuarCompraPeloItem', (req, res)=>{
                             }
                         });
                     } else {
-                        res.json({
+                        return res.json({
                             status: 'err'
                         })
                     }
@@ -173,7 +189,7 @@ app.post('/registerUser', (req, res)=>{
     }
     User.find({login: user.login}, (err, result)=>{
         if (result.length>0) {
-            res.json({
+            return res.json({
                 status: 'err'
             })
         } else {
@@ -190,7 +206,7 @@ app.post('/registerUser', (req, res)=>{
             }
             const userSave = new User(toRegister);
             userSave.save();
-            res.json({
+            return res.json({
                 status: 'success'
             })
         }
@@ -218,16 +234,16 @@ app.post('/logar', (req, res)=>{
                     }
                 }, jwtSecret);
 
-            res.json({
+            return res.json({
                 status: 'success',
                 jwt: token
             })
         } else if (result.length===0) {
-            res.json({
+            return res.json({
                 status: '404user'
             })
         } else if (!bcrypt.compareSync(loginInfo.pass, result[0].password)) {
-            res.json({
+            return res.json({
                 status: 'wrongPass'
             })
         }
@@ -238,11 +254,11 @@ app.post('/checkJwt', (req, res)=>{
     const jwtToCheck = req.body.jwt;
     jwt.verify(jwtToCheck, jwtSecret, (err, decoded)=>{
         if (err) {
-            res.json({
+            return res.json({
                 status: 'err'
             })
         } else {
-            res.json({
+            return res.json({
                 status: 'ok',
                 user: decoded.data
             })
@@ -256,20 +272,20 @@ app.post('/editarUser', (req, res)=>{
     //checagem pra ver se o id do usuário é o mesmo incluso no JWT
     jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
         if (err) {
-            res.json({
+            return res.json({
                 status: 'err'
             })
         } else if (decoded.data._id === newUser._id){
             User.findById(newUser._id, (err, result)=>{
                 User.findByIdAndUpdate(result._id, { endereco: newUser.endereco, nome: newUser.nome, sexo: newUser.sexo }, (err, updateResult)=>{
                     if (err) {
-                        res.json({
+                        return res.json({
                             status: 'err'
                         })
                     } else {
                         jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
                             if (err) {
-                                res.json({
+                                return res.json({
                                     status: 'err'
                                 })
                             } else {
@@ -285,7 +301,7 @@ app.post('/editarUser', (req, res)=>{
                                         }
                                     }, jwtSecret);
         
-                                res.json({
+                                return res.json({
                                     status: 'success',
                                     jwt: newJwt
                                 })
@@ -296,7 +312,7 @@ app.post('/editarUser', (req, res)=>{
             })
 
         } else {
-            res.json({
+            return res.json({
                 status: 'err'
             })
         }
