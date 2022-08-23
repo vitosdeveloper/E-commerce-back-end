@@ -66,9 +66,8 @@ app.post('/efetuarCompra', async (req, res)=>{
         return res.json({
             status: 'err'
         });
-    }
-
-    const testres = form.itensByIdAndItsQuantity.map(async item=>{
+    };
+    const stockCheck = form.itensByIdAndItsQuantity.map(async item=>{
         let mapResult = false;
         const quantidadeDesseItem = item.quantidade;
         const resultItem = await Item.findById(item._id);
@@ -77,11 +76,10 @@ app.post('/efetuarCompra', async (req, res)=>{
         }
         return mapResult;
     });
-
-    const results = await Promise.all(testres);
+    const checkResults = await Promise.all(stockCheck);
 
     //se nao tiver algo no estoque
-    if(results.includes(true)){
+    if(checkResults.includes(true)){
         return res.json({
             status: 'estoqueFail'
         })
@@ -193,7 +191,7 @@ app.post('/registerUser', (req, res)=>{
                 status: 'err'
             })
         } else {
-            const salt = bcrypt.genSaltSync(saltRounds);
+            const salt = bcrypt.genSaltSync(parseInt(saltRounds));
             const hashedPass = bcrypt.hashSync(user.password, salt);
 
             const toRegister = {
@@ -252,95 +250,50 @@ app.post('/logar', (req, res)=>{
 
 app.post('/checkJwt', (req, res)=>{
     const jwtToCheck = req.body.jwt;
-    jwt.verify(jwtToCheck, jwtSecret, (err, decoded)=>{
-        if (err) {
-            return res.json({
-                status: 'err'
-            })
-        } else {
-            return res.json({
-                status: 'ok',
-                user: decoded.data
-            })
-        }
-    })
+    try {
+        const decoded = jwt.verify(jwtToCheck, jwtSecret);
+        return res.json({
+            status: 'ok',
+            user: decoded.data
+        })
+    } catch(err){
+        return res.json({
+            status: 'err'
+        })
+    }
 })
 
-app.post('/editarUser', (req, res)=>{
+app.post('/editarUser', async (req, res)=>{
     const newUser = req.body.dadosComJwt;
     const oldJwt = req.body.dadosComJwt.jwt;
     //checagem pra ver se o id do usuário é o mesmo incluso no JWT
-    jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
-        if (err) {
-            return res.json({
-                status: 'err'
-            })
-        } else if (decoded.data._id === newUser._id){
-            User.findById(newUser._id, (err, result)=>{
-                User.findByIdAndUpdate(result._id, { endereco: newUser.endereco, nome: newUser.nome, sexo: newUser.sexo }, (err, updateResult)=>{
-                    if (err) {
-                        return res.json({
-                            status: 'err'
-                        })
-                    } else {
-                        jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
-                            if (err) {
-                                return res.json({
-                                    status: 'err'
-                                })
-                            } else {
-                                const newJwt = jwt.sign({
-                                    exp: Math.floor(Date.now() / 1000) + (30 * 60),
-                                    data: {
-                                            _id: updateResult._id,
-                                            login: newUser.login,
-                                            nome: newUser.nome,
-                                            endereco: newUser.endereco,
-                                            sexo: newUser.sexo,
-                                            itensComprados: newUser.itensComprados
-                                        }
-                                    }, jwtSecret);
-        
-                                return res.json({
-                                    status: 'success',
-                                    jwt: newJwt
-                                })
-                            }
-                        })
+    try {
+        const decoded = jwt.verify(oldJwt, jwtSecret);
+        if (decoded.data._id === newUser._id){
+            const updateResult = await User.findByIdAndUpdate(newUser._id, { endereco: newUser.endereco, nome: newUser.nome, sexo: newUser.sexo });
+            const newJwt = jwt.sign({
+                exp: Math.floor(Date.now() / 1000) + (30 * 60),
+                data: {
+                    _id: updateResult._id,
+                    login: newUser.login,
+                    nome: newUser.nome,
+                    endereco: newUser.endereco,
+                    sexo: newUser.sexo,
+                    itensComprados: newUser.itensComprados
                     }
-                })
-            })
-
-        } else {
+            }, jwtSecret);
             return res.json({
-                status: 'err'
+                status: 'success',
+                jwt: newJwt
             })
         }
-    })
+    } catch(err){
+        console.log(err);
+        return res.json({
+            status: 'err'
+        })
+    }
 })
-
-// app.post('/adicionarItem', (req, res)=>{
-//     const toAdd = {
-//         productImg: req.body.productImg,
-//         productTitle: req.body.productTitle,
-//         productPrice: req.body.productPrice,
-//         class: req.body.class,
-//         status: req.body.status,
-//         estoque: req.body.estoque,
-//         numDeCompras: req.body.numDeCompras
-//     }
-//     if (req.body.productTitle!==undefined) {
-//         const adicionarItem = new Item(toAdd);
-//         adicionarItem.save();
-//         res.json({
-//             status: toAdd.productTitle+' adicionado com sucesso.'
-//         })
-//     } else {
-//         res.json({
-//             status: 'erro no preenchimento do body'
-//         })
-//     }
-// })
 
 app.listen(PORT, ()=>{
     console.log('Server conectado, porta: ' + PORT);
