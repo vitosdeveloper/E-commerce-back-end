@@ -1,6 +1,9 @@
-Live version: https://vitos-e-commerce.netlify.app/
+Live adress: https://vitos-e-commerce.netlify.app/
 
-Linkedin: https://www.linkedin.com/in/vitosnatios/
+Server adress: https://vitos-e-commerce.herokuapp.com/
+App repo: https://github.com/vitosnatios/E-commerce
+
+My linkedin: https://www.linkedin.com/in/vitosnatios/
 
 E-mail: vitosdeveloper@gmail.com
 

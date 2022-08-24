@@ -50,7 +50,7 @@ const userSchema = ({
 const User = mongoose.model('accounts', userSchema)
 
 app.get('/', (req, res)=>{
-    return res.send('serverzin do vitosnatios riven');
+    return res.sendFile(__dirname+'/index.html');
 })
 
 app.get('/itensDaLoja', async (req, res)=>{
@@ -77,7 +77,6 @@ app.post('/efetuarCompra', async (req, res)=>{
         return mapResult;
     });
     const checkResults = await Promise.all(stockCheck);
-
     //se nao tiver algo no estoque
     if(checkResults.includes(true)){
         return res.json({
@@ -97,8 +96,8 @@ app.post('/efetuarCompra', async (req, res)=>{
                 form.itensByIdAndItsQuantity.forEach(async item=>{
                     const quantidadeDesseItem = item.quantidade;
                     const resultItem = await Item.findById(item._id);
-                    Item.findByIdAndUpdate(item._id, { estoque: resultItem.estoque-quantidadeDesseItem}, (err, result)=>{})
-                    Item.findByIdAndUpdate(item._id, { numDeCompras: resultItem.numDeCompras+quantidadeDesseItem}, (err, result)=>{})
+                    await Item.findByIdAndUpdate(item._id, { estoque: resultItem.estoque-quantidadeDesseItem});
+                    await Item.findByIdAndUpdate(item._id, { numDeCompras: resultItem.numDeCompras+quantidadeDesseItem});
                 })
                 const newJwt = jwt.sign({
                     exp: Math.floor(Date.now() / 1000) + (30 * 60),
@@ -107,8 +106,7 @@ app.post('/efetuarCompra', async (req, res)=>{
                             login: updatedUser.login,
                             nome: updatedUser.nome,
                             endereco: updatedUser.endereco,
-                            sexo: updatedUser.sexo,
-                            itensComprados: updatedUser.itensComprados
+                            sexo: updatedUser.sexo
                         }
                 }, jwtSecret);
                 return res.json({
@@ -123,92 +121,81 @@ app.post('/efetuarCompra', async (req, res)=>{
 })
 
 //comprar pela página do item
-app.post('/efetuarCompraPeloItem', (req, res)=>{
+app.post('/efetuarCompraPeloItem', async (req, res)=>{
     const form = req.body.formulario;
     const item = form.itensByIdAndItsQuantity;
     const quantidadeDesseItem = form.itensByIdAndItsQuantity.quantidade;
     const oldJwt = form.jwt;
-
-    jwt.verify(oldJwt, jwtSecret, (err, decoded)=>{
-        if (err) {
-            return res.json({
-                status: 'houve algum erro de credenciais'
-            })
-        } else if (decoded.data._id === form.userId) {
-            User.findById(form.userId, (err, result)=>{
-                const whatToChange = [...result.itensComprados, { detalhes: {valor: form.valorDaCompra, dataDaCompra: form.horarioDeCompra}, itens: form.itensByIdAndItsQuantity } ];
-                    //descontar do estoque quando comprado
-                Item.findById(item._id, (err, resultGeral)=>{
-                    if (resultGeral.estoque >= quantidadeDesseItem) {
-                        Item.findByIdAndUpdate(item._id, { estoque: resultGeral.estoque-quantidadeDesseItem}, (err, result)=>{})
-                        Item.findByIdAndUpdate(item._id, { numDeCompras: resultGeral.numDeCompras+quantidadeDesseItem}, (err, result)=>{})
-                        User.findByIdAndUpdate(form.userId, { itensComprados: whatToChange }, (err, userResult)=>{
-                            if (err) {
-                                console.log(err);
-                            } else {
-                                User.findById(form.userId, (err, updatedUser)=>{
-                                    const newJwt = jwt.sign({
-                                        exp: Math.floor(Date.now() / 1000) + (30 * 60),
-                                        data: {
-                                                _id: updatedUser._id,
-                                                login: updatedUser.login,
-                                                nome: updatedUser.nome,
-                                                endereco: updatedUser.endereco,
-                                                sexo: updatedUser.sexo,
-                                                itensComprados: updatedUser.itensComprados
-                                            }
-                                    }, jwtSecret);
-                                    return res.json({
-                                        status: 'success',
-                                        jwt: newJwt
-                                    })
-                                })
-                            }
-                        });
-                    } else {
-                        return res.json({
-                            status: 'err'
-                        })
-                    }
+    const returnError = async (erro)=>{
+        return res.json({
+            status: erro
+        })
+    };
+    try {
+        const decoded = jwt.verify(oldJwt, jwtSecret);
+        if (decoded.data._id === form.userId){
+            const result = await User.findById(form.userId);
+            const whatToChange = [...result.itensComprados, { detalhes: {valor: form.valorDaCompra, dataDaCompra: form.horarioDeCompra}, itens: form.itensByIdAndItsQuantity } ];
+            const itemToBuy = await Item.findById(item._id);
+            if (itemToBuy.estoque >= quantidadeDesseItem) {
+                await Item.findByIdAndUpdate(item._id, { estoque: itemToBuy.estoque-quantidadeDesseItem});
+                await Item.findByIdAndUpdate(item._id, { numDeCompras: itemToBuy.numDeCompras+quantidadeDesseItem});
+                await User.findByIdAndUpdate(form.userId, { itensComprados: whatToChange });
+                const updatedUser = await User.findById(form.userId);
+                const newJwt = jwt.sign({
+                    exp: Math.floor(Date.now() / 1000) + (30 * 60),
+                    data: {
+                            _id: updatedUser._id,
+                            login: updatedUser.login,
+                            nome: updatedUser.nome,
+                            endereco: updatedUser.endereco,
+                            sexo: updatedUser.sexo
+                        }
+                }, jwtSecret);
+                return res.json({
+                    status: 'success',
+                    jwt: newJwt
                 })
-            })
-        }
-    })
+            } else {
+                returnError('estoqueFail')
+            }
+        } 
+    } catch(err){
+        returnError('err');
+    }
 })
 
 
 //registrar usuario
-app.post('/registerUser', (req, res)=>{
+app.post('/registerUser', async (req, res)=>{
     //lembrar de logar com o user em minusculo
     const user = {
         login: req.body.toRegister.user.toLowerCase(),
         password: req.body.toRegister.pass,
         repeatPassword: req.body.toRegister.repeatPass
     }
-    User.find({login: user.login}, (err, result)=>{
-        if (result.length>0) {
-            return res.json({
-                status: 'err'
-            })
-        } else {
-            const salt = bcrypt.genSaltSync(parseInt(saltRounds));
-            const hashedPass = bcrypt.hashSync(user.password, salt);
-
-            const toRegister = {
-                login: user.login,
-                nome: "User",
-                password: hashedPass,
-                endereco: "",
-                sexo: "Prefiro não informar",
-                itensComprados: []
-            }
-            const userSave = new User(toRegister);
-            userSave.save();
-            return res.json({
-                status: 'success'
-            })
+    const result = await User.find({login: user.login});
+    if (result.length>0) {
+        return res.json({
+            status: 'err'
+        })
+    } else {
+        const salt = bcrypt.genSaltSync(parseInt(saltRounds));
+        const hashedPass = bcrypt.hashSync(user.password, salt);
+        const toRegister = {
+            login: user.login,
+            nome: "User",
+            password: hashedPass,
+            endereco: "",
+            sexo: "Prefiro não informar",
+            itensComprados: []
         }
-    })
+        const userSave = new User(toRegister);
+        userSave.save();
+        return res.json({
+            status: 'success'
+        })
+    }
 })
 
 app.post('/logar', (req, res)=>{
@@ -227,8 +214,7 @@ app.post('/logar', (req, res)=>{
                         login: result[0].login,
                         nome: result[0].nome,
                         endereco: result[0].endereco,
-                        sexo: result[0].sexo,
-                        itensComprados: result[0].itensComprados
+                        sexo: result[0].sexo
                     }
                 }, jwtSecret);
 
@@ -248,7 +234,7 @@ app.post('/logar', (req, res)=>{
     })
 })
 
-app.post('/checkJwt', (req, res)=>{
+app.post('/checkJwt', async (req, res)=>{
     const jwtToCheck = req.body.jwt;
     try {
         const decoded = jwt.verify(jwtToCheck, jwtSecret);
@@ -278,8 +264,7 @@ app.post('/editarUser', async (req, res)=>{
                     login: newUser.login,
                     nome: newUser.nome,
                     endereco: newUser.endereco,
-                    sexo: newUser.sexo,
-                    itensComprados: newUser.itensComprados
+                    sexo: newUser.sexo
                     }
             }, jwtSecret);
             return res.json({
@@ -291,6 +276,25 @@ app.post('/editarUser', async (req, res)=>{
         console.log(err);
         return res.json({
             status: 'err'
+        })
+    }
+})
+
+app.post('/alimentarHistorico', async (req, res)=>{
+    try {
+        const userId = req.body.dataToVerify.userId;
+        const currentJwt = req.body.dataToVerify.jwt;
+        const decodedJwt = jwt.verify(currentJwt, jwtSecret);
+        if (userId == decodedJwt.data._id){
+            const user = await User.findById(userId);
+            return res.json({
+                status: user.itensComprados
+            })
+        }
+    } catch(err){
+        console.log(err)
+        return res.json({
+            status: err
         })
     }
 })
