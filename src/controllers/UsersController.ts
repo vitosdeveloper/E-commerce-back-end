@@ -1,6 +1,4 @@
 import { Request, Response } from 'express';
-import ProductModel from '../models/ProductModel';
-import { IProductFrom } from '../helpers/types';
 import UserModel from '../models/UserModel';
 var jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
@@ -8,10 +6,8 @@ const bcrypt = require('bcrypt');
 const saltRounds = process.env.SALTYSALTY;
 
 export default class UsersController {
-  private Item: any;
   private User: any;
   constructor() {
-    this.Item = ProductModel.getSchema();
     this.User = UserModel.getSchema();
   }
 
