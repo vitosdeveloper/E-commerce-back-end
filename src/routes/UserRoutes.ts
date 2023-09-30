@@ -12,5 +12,6 @@ export default class UserRoutes extends Router {
   private initializeRoutes() {
     this.router.post('/api/registerUser', this.controller.registerUser);
     this.router.post('/api/logar', this.controller.logar);
+    this.router.post('/api/editarUser', this.controller.editarUser);
   }
 }

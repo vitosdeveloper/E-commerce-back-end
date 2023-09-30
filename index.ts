@@ -109,43 +109,43 @@ app.post('/api/checkJwt', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/editarUser', async (req: Request, res: Response) => {
-  const newUser = req.body.dadosComJwt;
-  const oldJwt = req.body.dadosComJwt.jwt;
-  //checagem pra ver se o id do usuário é o mesmo incluso no JWT
-  try {
-    const decoded = jwt.verify(oldJwt, jwtSecret);
-    if (decoded.data._id === newUser._id) {
-      const updateResult = await User.findByIdAndUpdate(newUser._id, {
-        endereco: newUser.endereco,
-        nome: newUser.nome,
-        sexo: newUser.sexo,
-      });
-      const newJwt = jwt.sign(
-        {
-          exp: Math.floor(Date.now() / 1000) + 30 * 60,
-          data: {
-            _id: updateResult._id,
-            login: newUser.login,
-            nome: newUser.nome,
-            endereco: newUser.endereco,
-            sexo: newUser.sexo,
-          },
-        },
-        jwtSecret
-      );
-      return res.json({
-        status: 'success',
-        jwt: newJwt,
-      });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.json({
-      status: 'err',
-    });
-  }
-});
+// app.post('/api/editarUser', async (req: Request, res: Response) => {
+//   const newUser = req.body.dadosComJwt;
+//   const oldJwt = req.body.dadosComJwt.jwt;
+//   //checagem pra ver se o id do usuário é o mesmo incluso no JWT
+//   try {
+//     const decoded = jwt.verify(oldJwt, jwtSecret);
+//     if (decoded.data._id === newUser._id) {
+//       const updateResult = await User.findByIdAndUpdate(newUser._id, {
+//         endereco: newUser.endereco,
+//         nome: newUser.nome,
+//         sexo: newUser.sexo,
+//       });
+//       const newJwt = jwt.sign(
+//         {
+//           exp: Math.floor(Date.now() / 1000) + 30 * 60,
+//           data: {
+//             _id: updateResult._id,
+//             login: newUser.login,
+//             nome: newUser.nome,
+//             endereco: newUser.endereco,
+//             sexo: newUser.sexo,
+//           },
+//         },
+//         jwtSecret
+//       );
+//       return res.json({
+//         status: 'success',
+//         jwt: newJwt,
+//       });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//     return res.json({
+//       status: 'err',
+//     });
+//   }
+// });
 
 app.post('/api/alimentarHistorico', async (req: Request, res: Response) => {
   try {
