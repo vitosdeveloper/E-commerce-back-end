@@ -147,24 +147,24 @@ app.post('/api/checkJwt', async (req: Request, res: Response) => {
 //   }
 // });
 
-app.post('/api/alimentarHistorico', async (req: Request, res: Response) => {
-  try {
-    const userId = req.body.dataToVerify.userId;
-    const currentJwt = req.body.dataToVerify.jwt;
-    const decodedJwt = jwt.verify(currentJwt, jwtSecret);
-    if (userId == decodedJwt.data._id) {
-      const user = await User.findById(userId);
-      return res.json({
-        status: user.itensComprados,
-      });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.json({
-      status: err,
-    });
-  }
-});
+// app.post('/api/alimentarHistorico', async (req: Request, res: Response) => {
+//   try {
+//     const userId = req.body.dataToVerify.userId;
+//     const currentJwt = req.body.dataToVerify.jwt;
+//     const decodedJwt = jwt.verify(currentJwt, jwtSecret);
+//     if (userId == decodedJwt.data._id) {
+//       const user = await User.findById(userId);
+//       return res.json({
+//         status: user.itensComprados,
+//       });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//     return res.json({
+//       status: err,
+//     });
+//   }
+// });
 
 app.listen(PORT, () => {
   console.log('Server conectado, porta: ' + PORT);

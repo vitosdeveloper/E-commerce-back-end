@@ -124,4 +124,23 @@ export default class UsersController {
       });
     }
   };
+
+  alimentarHistorico = async (req: Request, res: Response) => {
+    try {
+      const userId = req.body.dataToVerify.userId;
+      const currentJwt = req.body.dataToVerify.jwt;
+      const decodedJwt = jwt.verify(currentJwt, jwtSecret);
+      if (userId == decodedJwt.data._id) {
+        const user = await this.User.findById(userId);
+        return res.json({
+          status: user.itensComprados,
+        });
+      }
+    } catch (err) {
+      console.log(err);
+      return res.json({
+        status: err,
+      });
+    }
+  };
 }
