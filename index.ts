@@ -1,13 +1,12 @@
-import MainPageRoutes from './src/routes/MainPageRoutes';
-import ProductsRoutes from './src/routes/ProductsRoutes';
-import UserRoutes from './src/routes/UserRoutes';
-import AuthRoutes from './src/routes/AuthRoutes';
-
 require('dotenv').config();
 const express = require('express');
 const PORT = process.env.PORT || 5000;
 const cors = require('cors');
 const app = express();
+import MainPageRoutes from './src/routes/MainPageRoutes';
+import ProductsRoutes from './src/routes/ProductsRoutes';
+import UserRoutes from './src/routes/UserRoutes';
+import AuthRoutes from './src/routes/AuthRoutes';
 
 app.use(express.json());
 app.use(cors());

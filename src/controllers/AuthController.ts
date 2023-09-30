@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import UserModel from '../models/UserModel';
 var jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import ProductModel from '../models/ProductModel';
 import { IProductFrom } from '../helpers/types';
-import UserModel from '../models/UserModel';
+import { Item } from '../models/ProductModel';
+import { User } from '../models/UserModel';
 var jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -9,8 +9,8 @@ export default class ProductsController {
   private Item: any;
   private User: any;
   constructor() {
-    this.Item = ProductModel.getSchema();
-    this.User = UserModel.getSchema();
+    this.Item = Item;
+    this.User = User;
   }
 
   getAllProductsasync = async (req: Request, res: Response) => {

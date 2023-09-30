@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import UserModel from '../models/UserModel';
+import { User } from '../models/UserModel';
 var jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
 const bcrypt = require('bcrypt');
@@ -8,7 +8,7 @@ const saltRounds = process.env.SALTYSALTY;
 export default class UsersController {
   private User: any;
   constructor() {
-    this.User = UserModel.getSchema();
+    this.User = User;
   }
 
   registerUser = async (req: Request, res: Response) => {
