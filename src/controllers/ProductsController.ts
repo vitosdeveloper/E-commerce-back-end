@@ -98,4 +98,66 @@ export default class ProductsController {
       }
     }
   };
+
+  efetuarCompraPeloItem = async (req: Request, res: Response) => {
+    const form = req.body.formulario;
+    const item = form.itensByIdAndItsQuantity;
+    const quantidadeDesseItem = form.itensByIdAndItsQuantity.quantidade;
+    const oldJwt = form.jwt;
+    const returnError = async (erro: unknown) => {
+      return res.json({
+        status: erro,
+      });
+    };
+    try {
+      const decoded = jwt.verify(oldJwt, jwtSecret);
+      if (decoded.data._id === form.userId) {
+        const result = await this.User.findById(form.userId);
+        const whatToChange = [
+          ...result.itensComprados,
+          {
+            detalhes: {
+              valor: form.valorDaCompra,
+              dataDaCompra: form.horarioDeCompra,
+            },
+            itens: form.itensByIdAndItsQuantity,
+          },
+        ];
+        const itemToBuy = await this.Item.findById(item._id);
+        if (itemToBuy.estoque >= quantidadeDesseItem) {
+          await this.Item.findByIdAndUpdate(item._id, {
+            estoque: itemToBuy.estoque - quantidadeDesseItem,
+          });
+          await this.Item.findByIdAndUpdate(item._id, {
+            numDeCompras: itemToBuy.numDeCompras + quantidadeDesseItem,
+          });
+          await this.User.findByIdAndUpdate(form.userId, {
+            itensComprados: whatToChange,
+          });
+          const updatedUser = await this.User.findById(form.userId);
+          const newJwt = jwt.sign(
+            {
+              exp: Math.floor(Date.now() / 1000) + 30 * 60,
+              data: {
+                _id: updatedUser._id,
+                login: updatedUser.login,
+                nome: updatedUser.nome,
+                endereco: updatedUser.endereco,
+                sexo: updatedUser.sexo,
+              },
+            },
+            jwtSecret
+          );
+          return res.json({
+            status: 'success',
+            jwt: newJwt,
+          });
+        } else {
+          returnError('estoqueFail');
+        }
+      }
+    } catch (err) {
+      returnError('err');
+    }
+  };
 }
