@@ -45,4 +45,45 @@ export default class UsersController {
       });
     }
   };
+
+  logar = async (req: Request, res: Response) => {
+    const loginInfo = {
+      user: req.body.toLogin.user.toLowerCase(),
+      pass: req.body.toLogin.pass,
+    };
+    this.User.find({ login: loginInfo.user }, (err: unknown, result: any) => {
+      //se tudo estiver certo
+      if (
+        result.length > 0 &&
+        bcrypt.compareSync(loginInfo.pass, result[0].password)
+      ) {
+        const token = jwt.sign(
+          {
+            exp: Math.floor(Date.now() / 1000) + 30 * 60,
+            data: {
+              _id: result[0]._id,
+              login: result[0].login,
+              nome: result[0].nome,
+              endereco: result[0].endereco,
+              sexo: result[0].sexo,
+            },
+          },
+          jwtSecret
+        );
+
+        return res.json({
+          status: 'success',
+          jwt: token,
+        });
+      } else if (result.length === 0) {
+        return res.json({
+          status: '404user',
+        });
+      } else if (!bcrypt.compareSync(loginInfo.pass, result[0].password)) {
+        return res.json({
+          status: 'wrongPass',
+        });
+      }
+    });
+  };
 }
