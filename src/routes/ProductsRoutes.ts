@@ -11,5 +11,6 @@ export default class ProductsRoutes extends Router {
 
   private initializeRoutes() {
     this.router.get('/api/itensDaLoja', this.controller.getAllProductsasync);
+    this.router.get('/api/efetuarCompra', this.controller.efetuarCompra);
   }
 }

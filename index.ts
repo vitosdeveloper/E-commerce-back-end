@@ -58,11 +58,6 @@ const userSchema = {
 };
 const User = mongoose.model('accounts', userSchema);
 
-// app.get('/api/itensDaLoja', async (req: Request, res: Response) => {
-//   const result = await Item.find({});
-//   return res.send(result);
-// });
-
 //comprar pelo carrinho
 // app.post('/api/efetuarCompra', async (req: Request, res: Response) => {
 //   const oldJwt = req.body.formulario.jwt;
